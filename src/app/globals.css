@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/*
+ * Magazine Cazé — Design tokens
+ * Paleta inspirada no Nordeste (ver docs/DESIGN.md):
+ *   brand      → Azul Atlântico   (marca, navegação, confiança)
+ *   sol        → Laranja Sol      (CTAs de compra, urgência)
+ *   caja       → Amarelo Cajá     (destaques, ofertas, estrelas)
+ *   mandacaru  → Verde Mandacaru  (sucesso, Pix, frete grátis)
+ *   areia      → Areia            (fundos neutros quentes)
+ *   ink        → Tinta            (textos)
+ *   coral      → Coral            (descontos, erros)
+ */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #eef6fb;
+  --color-brand-100: #d6e9f5;
+  --color-brand-200: #aed3eb;
+  --color-brand-300: #7bb6dc;
+  --color-brand-400: #4592c6;
+  --color-brand-500: #2272aa;
+  --color-brand-600: #155a8c;
+  --color-brand-700: #0f4772;
+  --color-brand-800: #0c385b;
+  --color-brand-900: #0a2c47;
+  --color-brand-950: #061b2d;
+
+  --color-sol-50: #fff4ec;
+  --color-sol-100: #ffe4cf;
+  --color-sol-200: #ffc79e;
+  --color-sol-300: #ffa263;
+  --color-sol-400: #ff7f33;
+  --color-sol-500: #f66510;
+  --color-sol-600: #db4e06;
+  --color-sol-700: #b53c09;
+  --color-sol-800: #90320f;
+  --color-sol-900: #752b10;
+
+  --color-caja-100: #fff6d6;
+  --color-caja-200: #ffeaa3;
+  --color-caja-300: #ffdb6e;
+  --color-caja-400: #ffc93c;
+  --color-caja-500: #f5b308;
+  --color-caja-600: #c98b02;
+
+  --color-mandacaru-50: #ecfaf3;
+  --color-mandacaru-100: #d1f2e2;
+  --color-mandacaru-200: #a6e4c7;
+  --color-mandacaru-500: #1f9d6b;
+  --color-mandacaru-600: #158055;
+  --color-mandacaru-700: #136646;
+
+  --color-areia-50: #fcfaf6;
+  --color-areia-100: #f7f2e9;
+  --color-areia-200: #ede5d6;
+  --color-areia-300: #ddd1bc;
+
+  --color-ink-900: #1a1f2b;
+  --color-ink-700: #3b4252;
+  --color-ink-500: #636b78;
+  --color-ink-400: #8d94a0;
+  --color-ink-200: #d9dce1;
+
+  --color-coral-50: #fdeeee;
+  --color-coral-500: #e5484d;
+  --color-coral-600: #c9353a;
+
+  --shadow-card: 0 1px 2px rgb(10 44 71 / 0.06), 0 4px 16px -4px rgb(10 44 71 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(10 44 71 / 0.06), 0 16px 32px -8px rgb(10 44 71 / 0.18);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--color-areia-50);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  ::selection {
+    background: var(--color-caja-300);
+    color: var(--color-ink-900);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility container-page {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media (width >= 64rem) {
+    padding-inline: 2rem;
+  }
+}
