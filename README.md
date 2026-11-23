@@ -67,6 +67,9 @@ supabase/              migrações SQL com RLS e seed
 docs/DESIGN.md         paleta, tipografia e padrões de conversão
 ```
 
+## Rumo à produção
+O roteiro completo para operar com 5 mil produtos em todo o Brasil está em [`docs/PROMPT-PRODUCAO.md`](docs/PROMPT-PRODUCAO.md).
+
 ## Próximos passos sugeridos
 - E-mail transacional (Resend) com confirmação e links de acesso.
 - Nota fiscal automática (NFS-e e NF-e) via Focus NFe ou eNotas.
