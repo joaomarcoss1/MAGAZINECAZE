@@ -44,6 +44,8 @@ Na Vercel, `VERCEL_ENV=production` exige as seis variáveis do `.env.example` du
 
 Sem credenciais, o modo demonstração usa catálogo fictício e pedidos em memória. Para testar o banco local sem um gateway, use Supabase na própria máquina (localhost, 127.0.0.1 ou ::1). Um banco remoto exige token e segredo do Mercado Pago. Nunca use o projeto de produção para testes.
 
+Veja as instruções de [ambientes, migrações e CI](docs/AMBIENTES-E-CI.md) para configurar o Supabase local e rodar os testes.
+
 ## Colocando para vender de verdade
 
 1. **Supabase:** crie um projeto, rode `supabase/migrations/0001_init.sql` e, se quiser, `supabase/seed.sql` no SQL Editor.

@@ -1,0 +1,58 @@
+name: CI
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, types, unitários e checkout demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx tsc --noEmit
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  supabase:
+    name: Checkout com Supabase local
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.76.8
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: supabase start
+      - name: Exporta as credenciais efêmeras do banco local
+        shell: bash
+        run: |
+          config="$(supabase status -o json)"
+          url="$(jq -er '.API_URL' <<< "$config")"
+          anon="$(jq -er '.ANON_KEY' <<< "$config")"
+          service="$(jq -er '.SERVICE_ROLE_KEY' <<< "$config")"
+          echo "::add-mask::$anon"
+          echo "::add-mask::$service"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$url"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$service"
+          } >> "$GITHUB_ENV"
+      - run: npm run build
+      - run: npm run test:e2e
