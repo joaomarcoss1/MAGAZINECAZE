@@ -5,16 +5,16 @@ import { join } from "node:path";
 import { build } from "esbuild";
 
 const directory = mkdtempSync(join(tmpdir(), "magazine-caze-tests-"));
-const bundledTest = join(directory, "business.test.cjs");
+const bundledTests = ["business", "security"].map((name) => join(directory, name + ".test.js"));
 try {
   await build({
-    entryPoints: ["tests/business.test.ts"],
-    outfile: bundledTest,
+    entryPoints: ["tests/business.test.ts", "tests/security.test.ts"],
+    outdir: directory,
     bundle: true,
     platform: "node",
     conditions: ["react-server"],
   });
-  const result = spawnSync(process.execPath, ["--test", "tests/env.test.mjs", bundledTest], { stdio: "inherit" });
+  const result = spawnSync(process.execPath, ["--test", "tests/env.test.mjs", ...bundledTests], { stdio: "inherit" });
   if (result.error) throw result.error;
   process.exitCode = result.status ?? 1;
 } finally {

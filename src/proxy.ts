@@ -1,7 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { limitRequest } from "@/lib/security/limits";
+
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  if (path === "/api/checkout") return (await limitRequest(request, "checkout")) ?? NextResponse.next();
+  if (path.startsWith("/api/pedidos/")) return (await limitRequest(request, "pedidos")) ?? NextResponse.next();
+  if (path.startsWith("/api/download/")) return (await limitRequest(request, "download")) ?? NextResponse.next();
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   let response = NextResponse.next({ request });
@@ -22,7 +29,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
   if (!user && (path.startsWith("/conta") || path.startsWith("/admin"))) {
     const login = request.nextUrl.clone();
     login.pathname = "/entrar";
@@ -33,5 +39,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/conta/:path*", "/admin/:path*", "/entrar", "/checkout", "/pedido/:path*"],
+  matcher: ["/api/checkout", "/api/pedidos/:path*", "/api/download/:path*", "/conta/:path*", "/admin/:path*", "/entrar", "/checkout", "/pedido/:path*"],
 };

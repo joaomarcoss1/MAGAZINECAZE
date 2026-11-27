@@ -8,6 +8,13 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: url,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: key,
 });
+const protectionSchema = z.object({
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: key,
+  TURNSTILE_SECRET_KEY: key,
+  UPSTASH_REDIS_REST_URL: https,
+  UPSTASH_REDIS_REST_TOKEN: key,
+});
+
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: key,
   MERCADOPAGO_ACCESS_TOKEN: key,
@@ -38,9 +45,15 @@ export function validateEnv(env: NodeJS.ProcessEnv) {
       MERCADOPAGO_WEBHOOK_SECRET: payment ? key : key.optional(),
     })
   ).safeParse(values);
-  const invalid = [publicResult, serverResult].flatMap((result) =>
+  const protection = production || env.APP_ENV === "staging" ||
+    Object.keys(protectionSchema.shape).some((name) => values[name]);
+  const protectionResult = (protection ? protectionSchema : protectionSchema.partial()).safeParse(values);
+  const invalid = [publicResult, serverResult, protectionResult].flatMap((result) =>
     result.success ? [] : result.error.issues.map(({ path }) => path.join(".")),
   );
+  if (protection && !values.NEXT_PUBLIC_SITE_URL && !invalid.includes("NEXT_PUBLIC_SITE_URL")) {
+    invalid.push("NEXT_PUBLIC_SITE_URL");
+  }
   if (!production && payment && !database) invalid.push("NEXT_PUBLIC_SUPABASE_URL");
   if (!production && database && !payment && publicResult.success) {
     const host = new URL(publicResult.data.NEXT_PUBLIC_SUPABASE_URL!).hostname;

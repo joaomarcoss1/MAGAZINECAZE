@@ -14,6 +14,8 @@ import { OrderSummary } from "@/components/cart/order-summary";
 import { useHydrated } from "@/components/cart/use-hydrated";
 import { maskCEP, maskCPF, maskPhone } from "./masks";
 
+import { Turnstile, challengeEnabled } from "@/components/security/turnstile";
+
 type Errors = Record<string, string[] | undefined>;
 
 function Step({ n, title, icon: I, children }: { n: number; title: string; icon: typeof UserRound; children: React.ReactNode }) {
@@ -34,6 +36,8 @@ export function CheckoutForm() {
   const router = useRouter();
   const { items, clear } = useCart();
   const [method, setMethod] = useState<"pix" | "card">("pix");
+  const [captchaToken, setCaptchaToken] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
@@ -82,6 +86,7 @@ export function CheckoutForm() {
           customer: c,
           address: physical ? a : undefined,
           method,
+          captchaToken,
         }),
       });
       const data = await res.json();
@@ -106,6 +111,8 @@ export function CheckoutForm() {
     } catch {
       setError("Falha de conexão. Verifique sua internet e tente novamente.");
     } finally {
+      setCaptchaToken(undefined);
+      setAttempt((value) => value + 1);
       setLoading(false);
     }
   }
@@ -179,7 +186,8 @@ export function CheckoutForm() {
             ))}
           </ul>
           {error && <p className="mb-3 rounded-lg bg-coral-50 p-3 text-sm text-coral-600" role="alert">{error}</p>}
-          <Button type="submit" variant={method === "pix" ? "pix" : "buy"} size="lg" className="w-full" disabled={loading}>
+          <Turnstile action="checkout" onToken={setCaptchaToken} attempt={attempt} />
+          <Button type="submit" variant={method === "pix" ? "pix" : "buy"} size="lg" className="w-full" disabled={loading || (challengeEnabled && !captchaToken)}>
             {loading ? <Loader2 className="size-5 animate-spin" /> : <Lock className="size-4" />}
             {method === "pix" ? `Pagar ${formatBRL(total)} com Pix` : `Pagar ${formatBRL(total)} no cartão`}
           </Button>
