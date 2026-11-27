@@ -43,6 +43,7 @@ export const checkoutSchema = z.object({
     .max(30),
   customer: customerSchema,
   address: addressSchema.optional(),
+  captchaToken: z.string().min(1).max(2048).optional(),
   method: z.enum(["pix", "card"]),
 });
 

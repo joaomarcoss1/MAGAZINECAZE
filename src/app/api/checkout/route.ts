@@ -10,6 +10,8 @@ import { getPaymentProvider } from "@/lib/payments";
 import { shippingFor } from "@/lib/shipping";
 import { checkoutSchema } from "@/lib/validators";
 
+import { verifyCheckoutChallenge } from "@/lib/security/turnstile";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
@@ -21,6 +23,13 @@ export async function POST(req: Request) {
     );
   }
   const input = parsed.data;
+  const challenge = await verifyCheckoutChallenge(input.captchaToken);
+  if (challenge !== "valid") {
+    return NextResponse.json(
+      { error: challenge === "invalid" ? "Refaça a verificação de segurança." : "Verificação indisponível. Tente novamente." },
+      { status: challenge === "invalid" ? 403 : 503 },
+    );
+  }
 
   // Preços SEMPRE recalculados no servidor a partir do catálogo — nunca confie no carrinho do navegador.
   const products = await getProductsByIds(input.items.map((i) => i.id));

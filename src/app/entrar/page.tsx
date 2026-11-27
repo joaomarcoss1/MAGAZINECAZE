@@ -4,11 +4,13 @@ import { LoginForm } from "@/components/account/login-form";
 import { isDemoMode } from "@/lib/config";
 import { LogoMark } from "@/components/layout/logo";
 
+import { safeReturnPath } from "@/lib/security/return-path";
+
 export const metadata: Metadata = { title: "Entrar" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
-  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/conta";
+  const safeNext = safeReturnPath(next);
   return (
     <div className="container-page flex justify-center py-14">
       <div className="w-full max-w-md rounded-3xl border border-areia-200 bg-white p-8 shadow-[var(--shadow-lift)]">

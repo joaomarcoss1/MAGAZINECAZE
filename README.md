@@ -40,9 +40,11 @@ Abra http://localhost:3000. **Sem variáveis de ambiente, a loja roda em modo de
 
 Use Node.js 24 LTS para rodar o projeto e os testes de ambiente (`npm run test:env`).
 
-Na Vercel, `VERCEL_ENV=production` exige as seis variáveis do `.env.example` durante o build e na inicialização. Fora da Vercel, configure `APP_ENV=production` nos dois momentos. As URLs precisam usar HTTPS em produção. Erros informam apenas os nomes das variáveis.
+Na Vercel, `VERCEL_ENV=production` exige as variáveis obrigatórias do `.env.example` durante o build e na inicialização. Fora da Vercel, configure `APP_ENV=production` nos dois momentos. As URLs precisam usar HTTPS em produção. Erros informam apenas os nomes das variáveis.
 
 Sem credenciais, o modo demonstração usa catálogo fictício e pedidos em memória. Para testar o banco local sem um gateway, use Supabase na própria máquina (localhost, 127.0.0.1 ou ::1). Um banco remoto exige token e segredo do Mercado Pago. Nunca use o projeto de produção para testes.
+
+Configure [as proteções web](docs/PROTECOES-WEB.md) antes de habilitar staging e produção.
 
 Veja as instruções de [ambientes, migrações e CI](docs/AMBIENTES-E-CI.md) para configurar o Supabase local e rodar os testes.
 

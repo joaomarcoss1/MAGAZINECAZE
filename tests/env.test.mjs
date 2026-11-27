@@ -4,6 +4,10 @@ import { validateEnv } from "../src/lib/env.ts";
 
 const configured = {
   VERCEL_ENV: "production",
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: "widget-test",
+  TURNSTILE_SECRET_KEY: "secret-test",
+  UPSTASH_REDIS_REST_URL: "https://redis.example",
+  UPSTASH_REDIS_REST_TOKEN: "redis-test",
   NEXT_PUBLIC_SITE_URL: "https://loja.example",
   NEXT_PUBLIC_SUPABASE_URL: "https://db.example",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "public-test-key",
