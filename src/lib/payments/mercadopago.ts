@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { isProduction } from "@/lib/env";
 import { store } from "@/lib/config";
 import type { Order } from "@/lib/orders/types";
 import type { PaymentInfo, PaymentProvider, PaymentStatus } from "./types";
@@ -133,7 +134,7 @@ export function verifyMercadoPagoSignature(opts: {
   dataId: string;
 }): boolean {
   const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production"; // em produção, o segredo é obrigatório
+  if (!secret) return !isProduction(process.env) && process.env.NODE_ENV !== "production"; // em produção, o segredo é obrigatório
   if (!opts.xSignature) return false;
   const parts = Object.fromEntries(
     opts.xSignature.split(",").map((kv) => kv.split("=").map((s) => s.trim()) as [string, string]),

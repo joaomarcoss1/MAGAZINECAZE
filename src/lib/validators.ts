@@ -18,7 +18,7 @@ export function isValidCPF(value: string): boolean {
 
 export const customerSchema = z.object({
   name: z.string().trim().min(5, "Informe nome e sobrenome").max(120),
-  email: z.string().trim().toLowerCase().email("E-mail inválido"),
+  email: z.string().trim().toLowerCase().pipe(z.email("E-mail inválido")),
   cpf: z.string().refine(isValidCPF, "CPF inválido").transform(onlyDigits),
   phone: z
     .string()

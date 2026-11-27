@@ -4,12 +4,12 @@ Loja virtual da Magazine Cazé, com preparatórios (ENEM e concursos), cursos pr
 
 ![Home](docs/screenshots/home.png)
 
-**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Postgres, Auth, Storage) · Mercado Pago (Pix + cartão em até 12x) · Vercel.
+**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Postgres, Auth, Storage) · Mercado Pago (Pix + cartão em até 12x) · Vercel.
 
 ## Rodando localmente
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -35,6 +35,14 @@ Abra http://localhost:3000. **Sem variáveis de ambiente, a loja roda em modo de
 - `POST /api/webhooks/mercadopago`: valida a assinatura, consulta o pagamento no Mercado Pago e confirma o pedido de forma idempotente.
 - `GET /api/pedidos/[id]`: status do pedido (usado pela página do Pix).
 - `GET /api/download/[productId]?pedido=`: entrega protegida (link assinado de 2 minutos ou redirecionamento para a área do aluno).
+
+## Configuração e validação
+
+Use Node.js 24 LTS para rodar o projeto e os testes de ambiente (`npm run test:env`).
+
+Na Vercel, `VERCEL_ENV=production` exige as seis variáveis do `.env.example` durante o build e na inicialização. Fora da Vercel, configure `APP_ENV=production` nos dois momentos. As URLs precisam usar HTTPS em produção. Erros informam apenas os nomes das variáveis.
+
+Sem credenciais, o modo demonstração usa catálogo fictício e pedidos em memória. Para testar o banco local sem um gateway, use Supabase na própria máquina (localhost, 127.0.0.1 ou ::1). Um banco remoto exige token e segredo do Mercado Pago. Nunca use o projeto de produção para testes.
 
 ## Colocando para vender de verdade
 
@@ -69,6 +77,8 @@ docs/DESIGN.md         paleta, tipografia e padrões de conversão
 
 ## Rumo à produção
 O roteiro completo para operar com 5 mil produtos em todo o Brasil está em [`docs/PROMPT-PRODUCAO.md`](docs/PROMPT-PRODUCAO.md).
+
+O diagnóstico inicial e os pontos de revisão de cada entrega estão em [`docs/EXECUCAO-POR-FASES.md`](docs/EXECUCAO-POR-FASES.md). O diagnóstico (0A) e a atualização de dependências e validação do ambiente (0B) estão disponíveis para revisão.
 
 ## Próximos passos sugeridos
 - E-mail transacional (Resend) com confirmação e links de acesso.

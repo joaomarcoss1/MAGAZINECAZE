@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createJsClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { isProduction } from "@/lib/env";
 import { isSupabaseConfigured } from "@/lib/config";
 
 /** Cliente com a sessão do usuário (respeita RLS). */
@@ -28,7 +29,10 @@ export async function createClient() {
 /** Cliente de serviço (ignora RLS). Use SOMENTE no servidor, em rotas confiáveis. */
 export function createAdminClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!isSupabaseConfigured || !key) return null;
+  if (!isSupabaseConfigured || !key?.trim()) {
+    if (isProduction(process.env)) throw new Error("Supabase indisponível.");
+    return null;
+  }
   return createJsClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });

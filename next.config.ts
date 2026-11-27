@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+import { validateEnv } from "./src/lib/env";
+
+validateEnv(process.env);
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],

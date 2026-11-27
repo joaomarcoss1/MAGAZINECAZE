@@ -1,13 +1,12 @@
 "use client";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useHydrated } from "@/components/cart/use-hydrated";
 import { cartCount, useCart } from "@/store/cart";
 
 export function CartButton() {
   const items = useCart((s) => s.items);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useHydrated();
   const count = mounted ? cartCount(items) : 0;
 
   return (

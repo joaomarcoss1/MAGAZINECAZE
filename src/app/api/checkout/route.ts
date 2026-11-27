@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { NextResponse } from "next/server";
 import { getProductsByIds } from "@/lib/catalog/repository";
 import { store } from "@/lib/config";
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
   const parsed = checkoutSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Dados inválidos", fields: parsed.error.flatten().fieldErrors },
+      { error: "Dados inválidos", fields: z.flattenError(parsed.error).fieldErrors },
       { status: 422 },
     );
   }

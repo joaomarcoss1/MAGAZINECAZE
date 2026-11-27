@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
 
-/** Evita divergência de hidratação com o carrinho salvo no localStorage. */
+import { useSyncExternalStore } from "react";
+
+const subscribe = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+
 export function useHydrated() {
-  const [h, setH] = useState(false);
-  useEffect(() => setH(true), []);
-  return h;
+  return useSyncExternalStore(subscribe, clientSnapshot, serverSnapshot);
 }
