@@ -21,7 +21,7 @@ const schema = z.object({
   badge: z.string().optional(),
   coverTheme: z.enum(["atlantico", "sol", "caja", "mandacaru", "coral", "noite"]),
   coverIcon: z.string().min(1),
-  imageUrl: z.string().url().or(z.literal("")).optional(),
+  imageUrl: z.url({ protocol: /^https?$/ }).or(z.literal("")).optional(),
   highlights: z.string().optional(),
   specs: z.string().optional(),
   stock: z.string().optional(),

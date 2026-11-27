@@ -17,10 +17,10 @@ export const store = {
 } as const;
 
 export const isSupabaseConfigured = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
 );
 
-export const isMercadoPagoConfigured = Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN);
+export const isMercadoPagoConfigured = Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN?.trim());
 
 /** Modo demonstração: sem banco nem gateway configurados, a loja roda com dados de exemplo. */
 export const isDemoMode = !isSupabaseConfigured;
