@@ -23,7 +23,10 @@ test("cadastro e login do formulário usam o Supabase local", async ({ page }) =
   expect(confirmed.error).toBeNull();
   try {
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
+    const loginResponse = page.waitForResponse((res) => res.url().endsWith("/api/auth/session") && res.request().method() === "POST");
     await page.getByRole("button", { name: "Entrar", exact: true }).last().click();
+    expect((await loginResponse).status()).toBe(200);
+    expect((await page.context().cookies()).some((cookie) => cookie.name.includes("-auth-token"))).toBe(true);
     await expect(page).toHaveURL(/\/conta$/);
   } finally {
     await db.auth.admin.deleteUser(account!.id);

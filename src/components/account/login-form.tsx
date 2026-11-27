@@ -1,5 +1,4 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Turnstile, challengeEnabled } from "@/components/security/turnstile";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/format";
 
 export function LoginForm({ next }: { next: string }) {
-  const router = useRouter();
   const [mode, setMode] = useState<"entrar" | "cadastrar">("entrar");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,8 +30,7 @@ export function LoginForm({ next }: { next: string }) {
         const { error } = await response.json();
         setMsg({ ok: false, text: error });
       } else if (mode === "entrar") {
-        router.push(next);
-        router.refresh();
+        window.location.assign(next);
       } else {
         setMsg({ ok: true, text: "Conta criada! Confira seu e-mail para confirmar o cadastro." });
       }
