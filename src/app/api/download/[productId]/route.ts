@@ -1,39 +1,67 @@
+import { isIP } from "node:net";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getProductsByIds } from "@/lib/catalog/repository";
 import { getOrder } from "@/lib/orders/store";
-import { createAdminClient } from "@/lib/supabase/server";
-import { store } from "@/lib/config";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { isDemoMode, store } from "@/lib/config";
+import { isProduction } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
+const headers = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" };
+const uuid = z.guid();
+const denied = () => NextResponse.json({ error: "Acesso não autorizado." }, { status: 403, headers });
 
-/**
- * Entrega digital protegida. Exige um pedido PAGO que contenha o produto.
- * - Cursos com URL de área do aluno → redireciona.
- * - Arquivos (e-books/sistemas) → link assinado do Supabase Storage válido por 2 minutos.
- */
 export async function GET(req: Request, { params }: { params: Promise<{ productId: string }> }) {
   const { productId } = await params;
   const orderId = new URL(req.url).searchParams.get("pedido") ?? "";
-  const order = await getOrder(orderId);
-  if (!order || order.status !== "paid" || !order.items.some((i) => i.productId === productId)) {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
-  }
-  const [product] = await getProductsByIds([productId]);
-  if (!product?.deliveryPath) return NextResponse.json({ error: "Produto sem entrega digital" }, { status: 404 });
-
-  if (/^https?:\/\//.test(product.deliveryPath)) return NextResponse.redirect(product.deliveryPath);
-
+  const demo = isDemoMode && !isProduction(process.env);
   const db = createAdminClient();
-  if (!db) {
-    const text = `${store.name}\n\nArquivo de DEMONSTRAÇÃO de "${product.title}".\nPedido ${order.number} — licenciado para ${order.customer.name} (${order.customer.email}).\n\nEm produção, aqui seria entregue o arquivo real guardado no Supabase Storage.`;
-    return new NextResponse(text, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${product.slug}-demo.txt"`,
-      },
+
+  if (!demo) {
+    if (!uuid.safeParse(orderId).success || !uuid.safeParse(productId).success || !db) return denied();
+    const session = await createClient();
+    const user = session && (await session.auth.getUser()).data.user;
+    if (!user) return denied();
+
+    const order = await getOrder(orderId);
+    const guestEmail = user.email_confirmed_at && user.confirmation_sent_at && user.email?.toLowerCase();
+    if (order?.status !== "paid" ||
+      (order.userId ? order.userId !== user.id : !guestEmail || guestEmail !== order.customer.email.toLowerCase()) ||
+      !order.items.some((item) => item.productId === productId && item.type !== "fisico")) return denied();
+
+    const [product] = await getProductsByIds([productId]);
+    if (!product?.deliveryPath) return unavailable(404);
+    let destination: string;
+    if (/^https?:\/\//i.test(product.deliveryPath)) {
+      destination = product.deliveryPath;
+    } else {
+      const { data, error } = await db.storage.from("digital").createSignedUrl(product.deliveryPath, 120, { download: true });
+      if (error || !data) return unavailable(error?.message.toLowerCase().includes("not found") ? 404 : 503);
+      destination = data.signedUrl;
+    }
+
+    const source = process.env.VERCEL === "1" ? "x-vercel-forwarded-for" : "x-real-ip";
+    const ip = req.headers.get(source)?.split(",")[0].trim() ?? "";
+    const { data, error } = await db.rpc("record_digital_delivery", {
+      p_order: orderId, p_product: productId, p_user: user.id, p_ip: isIP(ip) ? ip : null,
     });
+    if (error) return unavailable(503);
+    if (data === "limit") return NextResponse.json({ error: "Limite de 10 acessos atingido. Fale com o suporte." }, { status: 429, headers });
+    if (data !== "allowed") return denied();
+    return NextResponse.redirect(destination, { headers });
   }
-  const { data, error } = await db.storage.from("digital").createSignedUrl(product.deliveryPath, 120, { download: true });
-  if (error || !data) return NextResponse.json({ error: "Arquivo indisponível" }, { status: 404 });
-  return NextResponse.redirect(data.signedUrl);
+
+  const order = await getOrder(orderId);
+  if (order?.status !== "paid" || !order.items.some((item) => item.productId === productId && item.type !== "fisico")) return denied();
+  const [product] = await getProductsByIds([productId]);
+  if (!product?.deliveryPath) return unavailable(404);
+  return new NextResponse(`${store.name}\n\nArquivo de demonstração de "${product.title}".\nPedido ${order.number}.`, {
+    headers: { ...headers, "Content-Type": "text/plain; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${product.slug}-demo.txt"` },
+  });
+}
+
+function unavailable(status: number) {
+  return NextResponse.json({ error: "Entrega indisponível." }, { status, headers });
 }

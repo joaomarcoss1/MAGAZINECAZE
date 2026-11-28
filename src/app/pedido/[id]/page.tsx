@@ -6,6 +6,8 @@ import { CheckCircle2, Clock, Download, PlayCircle, Truck, XCircle } from "lucid
 import { getOrder } from "@/lib/orders/store";
 import { orderStatusLabel } from "@/lib/orders/types";
 import { isPaymentSimulated } from "@/lib/payments";
+import { isDemoMode } from "@/lib/config";
+import { getCurrentUser } from "@/lib/auth";
 import { formatBRL, formatDate } from "@/lib/format";
 import { PixPanel, SimulateButton } from "@/components/order/pix-panel";
 import { StatusWatcher } from "@/components/order/status-watcher";
@@ -20,6 +22,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const pending = order.status === "pending";
   const paid = order.status === "paid";
+  const user = paid && !isDemoMode ? await getCurrentUser() : null;
+  const canOpen = isDemoMode || (user && (order.userId ? order.userId === user.id : user.email.toLowerCase() === order.customer.email.toLowerCase()));
   const simulated = isPaymentSimulated();
   const qrImage =
     pending && order.pix
@@ -76,7 +80,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   <span className="flex items-center gap-1.5 text-sm font-medium text-brand-600">
                     <Truck className="size-4" /> Em separação
                   </span>
-                ) : (
+                ) : canOpen ? (
                   <a
                     href={`/api/download/${i.productId}?pedido=${order.id}`}
                     className="inline-flex items-center gap-2 rounded-xl bg-mandacaru-500 px-4 py-2 text-sm font-semibold text-white hover:bg-mandacaru-600"
@@ -84,6 +88,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                     {i.type === "curso" || i.type === "preparatorio" ? <PlayCircle className="size-4" /> : <Download className="size-4" />}
                     {i.type === "curso" || i.type === "preparatorio" ? "Acessar curso" : "Baixar"}
                   </a>
+                ) : (
+                  <Link href="/entrar?next=/conta" className="font-semibold text-brand-700 underline">Entre na conta para acessar</Link>
                 ))}
             </li>
           ))}
