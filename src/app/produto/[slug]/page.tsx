@@ -25,7 +25,9 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await getProductBySlug((await params).slug);
   if (!p) return {};
-  return { title: p.title, description: p.subtitle, openGraph: { title: p.title, description: p.subtitle } };
+  const title = p.seoTitle ?? p.title;
+  const description = p.seoDescription ?? p.subtitle;
+  return { title, description, openGraph: { title, description } };
 }
 
 export default async function ProductPage({ params }: Props) {

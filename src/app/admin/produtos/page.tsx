@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { getProductPage } from "@/lib/catalog/repository";
+import { getAdminProductPage } from "@/lib/catalog/repository";
 import { pageNumber, pageSize } from "@/lib/catalog/pagination";
 import { productTypeLabel } from "@/lib/catalog/types";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatDate } from "@/lib/format";
 import { ProductCover } from "@/components/product/product-cover";
 import { ButtonLink } from "@/components/ui/button";
 
 export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ pagina?: string }> }) {
   const page = pageNumber((await searchParams).pagina);
-  const { products, total } = await getProductPage({ sort: "novidades", page });
+  const { products, total } = await getAdminProductPage(page);
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -23,7 +23,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
               <ProductCover product={p} size="thumb" className="size-14 shrink-0 rounded-lg" />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{p.title}</p>
-                <p className="text-xs text-ink-400">{productTypeLabel[p.type]} · {p.soldCount.toLocaleString("pt-BR")} vendidos{p.stock !== null && ` · estoque ${p.stock}`}</p>
+                <p className="text-xs text-ink-400">{productTypeLabel[p.type]} · {p.status === "archived" ? "Arquivado · " : p.status === "draft" ? "Rascunho · " : p.publishAt ? `Publicação: ${formatDate(p.publishAt)} · ` : ""} {p.soldCount.toLocaleString("pt-BR")} vendidos{p.stock !== null && ` · estoque ${p.stock}`}</p>
               </div>
               <span className="font-display font-extrabold">{formatBRL(p.priceCents)}</span>
             </Link>

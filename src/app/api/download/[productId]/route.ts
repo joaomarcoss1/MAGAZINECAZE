@@ -30,13 +30,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ productI
       (order.userId ? order.userId !== user.id : !guestEmail || guestEmail !== order.customer.email.toLowerCase()) ||
       !order.items.some((item) => item.productId === productId && item.type !== "fisico")) return denied();
 
-    const [product] = await getProductsByIds([productId]);
-    if (!product?.deliveryPath) return unavailable(404);
+    const { data: product, error: lookupError } = await db.from("products").select("delivery_path").eq("id", productId).maybeSingle();
+    if (lookupError) return unavailable(503);
+    if (!product?.delivery_path) return unavailable(404);
     let destination: string;
-    if (/^https?:\/\//i.test(product.deliveryPath)) {
-      destination = product.deliveryPath;
+    if (/^https?:\/\//i.test(product.delivery_path)) {
+      destination = product.delivery_path;
     } else {
-      const { data, error } = await db.storage.from("digital").createSignedUrl(product.deliveryPath, 120, { download: true });
+      const { data, error } = await db.storage.from("digital").createSignedUrl(product.delivery_path, 120, { download: true });
       if (error || !data) return unavailable(error?.message.toLowerCase().includes("not found") ? 404 : 503);
       destination = data.signedUrl;
     }

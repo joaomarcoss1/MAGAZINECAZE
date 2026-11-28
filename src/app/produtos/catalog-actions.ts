@@ -9,6 +9,8 @@ const filters = z.object({
   categoria: z.string().max(100).optional(),
   tipo: z.string().max(24).optional(),
   ordem: z.string().max(24).optional(),
+  atributo: z.string().max(60).optional(),
+  valor: z.string().max(100).optional(),
   ate: z.string().max(10).optional(),
   pagina: z.string().regex(/^[1-9]\d{0,5}$/),
 });
