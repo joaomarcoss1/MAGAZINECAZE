@@ -27,7 +27,7 @@ test("admin envia imagens e cliente navega pela galeria ordenada", async ({ page
     });
     await page.getByLabel("Texto alternativo").fill("Imagem inválida");
     await page.getByRole("button", { name: "Adicionar à galeria" }).click();
-    await expect(page.getByRole("alert")).toContainText("JPEG, PNG ou WebP");
+    await expect(page.getByRole("alert").filter({ hasText: "JPEG, PNG ou WebP" })).toBeVisible();
 
     for (const [alt, background] of [["Capa azul", "#1b5a99"], ["Vista laranja", "#eb7200"]]) {
       const buffer = await sharp({ create: { width: 32, height: 24, channels: 3, background } }).png().toBuffer();
@@ -48,7 +48,9 @@ test("admin envia imagens e cliente navega pela galeria ordenada", async ({ page
     await page.goto("/produto/fixture-galeria");
     await expect(page.getByRole("img", { name: "Capa azul" })).toBeVisible();
     await page.getByRole("button", { name: "Ver imagem 2: Vista laranja" }).click();
-    await expect(page.getByRole("img", { name: "Vista laranja" })).toBeVisible();
+    const second = page.getByRole("img", { name: "Vista laranja" });
+    await expect(second).toBeVisible();
+    await expect.poll(() => second.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   } finally {
     const objects = await db.storage.from("produtos").list(productId);
     if (objects.data?.length) await db.storage.from("produtos").remove(objects.data.map((file) => `${productId}/${file.name}`));
