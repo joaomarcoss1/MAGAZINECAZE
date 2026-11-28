@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { productToRow } from "@/lib/catalog/repository";
 import { createAdminClient } from "@/lib/supabase/server";
+import { catalogImageSource } from "@/lib/catalog/image-origins";
 import { slugify } from "@/lib/format";
 
 const toCents = (v: string) => Math.round(Number(v.replace(/\./g, "").replace(",", ".")) * 100);
@@ -45,6 +46,7 @@ export async function saveProduct(_prev: SaveState, form: FormData): Promise<Sav
   const parsed = schema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "Revise os campos obrigatórios." };
   const f = parsed.data;
+  if (f.imageUrl && !catalogImageSource(f.imageUrl)) return { error: "Use uma imagem de origem autorizada ou envie o arquivo pela galeria." };
   const priceCents = toCents(f.price);
   if (!Number.isFinite(priceCents) || priceCents <= 0) return { error: "Preço inválido." };
   const compare = f.compareAt ? toCents(f.compareAt) : null;

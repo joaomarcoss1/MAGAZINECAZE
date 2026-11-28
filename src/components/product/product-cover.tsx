@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { catalogImageSource } from "@/lib/catalog/image-origins";
 import type { CoverTheme, Product } from "@/lib/catalog/types";
 import { productTypeLabel } from "@/lib/catalog/types";
 import { cn } from "@/lib/format";
@@ -32,11 +33,13 @@ export function ProductCover({
   hideLabel?: boolean;
   contentClassName?: string;
 }) {
-  if (product.imageUrl) {
+  const source = catalogImageSource(product.imageUrl);
+  if (source) {
     return (
       <div className={cn("relative overflow-hidden bg-areia-100", className)}>
         <Image
-          src={product.imageUrl}
+          src={source.url}
+          unoptimized={source.local}
           alt={product.title}
           fill
           sizes={size === "hero" ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 25vw, 50vw"}

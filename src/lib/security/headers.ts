@@ -1,3 +1,4 @@
+import { localCatalogImageOrigin } from "../catalog/image-origins";
 import { isProduction } from "../env";
 
 export function securityHeaders(env: NodeJS.ProcessEnv) {
@@ -10,7 +11,7 @@ export function securityHeaders(env: NodeJS.ProcessEnv) {
     "default-src 'self'",
     `script-src ${script.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    [ "img-src 'self' data: blob:", localCatalogImageOrigin(env.NEXT_PUBLIC_SUPABASE_URL) ].filter(Boolean).join(" "),
     "font-src 'self'",
     `connect-src 'self' ${turnstile} ${analytics} https://viacep.com.br https://api.mercadopago.com ${supabase}`.trim(),
     `frame-src ${turnstile} https://www.mercadopago.com.br`,
