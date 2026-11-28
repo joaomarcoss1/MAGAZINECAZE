@@ -1,7 +1,8 @@
 import { productTypeLabel, type ProductQuery, type ProductType, type SortOption } from "./types";
 
 export const pageSize = 24;
-export type CatalogParams = Partial<Record<"q" | "categoria" | "tipo" | "ordem" | "ate" | "pagina", string | string[]>>;
+export const priceRanges = [5000, 10000, 20000, 50000];
+export type CatalogParams = Partial<Record<"q" | "categoria" | "tipo" | "ordem" | "ate" | "atributo" | "valor" | "pagina", string | string[]>>;
 const sorts = new Set(["relevancia", "mais-vendidos", "menor-preco", "maior-preco", "avaliacao", "novidades"]);
 
 export function pageNumber(value: unknown): number {
@@ -14,7 +15,10 @@ export function catalogQuery(params: CatalogParams): ProductQuery {
   const type = value(params.tipo);
   const sort = value(params.ordem);
   const rawPrice = value(params.ate);
+  const name = value(params.atributo)?.trim();
+  const option = value(params.valor)?.trim();
   return {
+    attribute: name && option && name.length <= 60 && option.length <= 100 ? { name, value: option } : undefined,
     q: value(params.q)?.trim().slice(0, 120),
     category: value(params.categoria)?.slice(0, 100),
     type: type && Object.hasOwn(productTypeLabel, type) ? type as ProductType : undefined,

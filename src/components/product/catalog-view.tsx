@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { SearchX } from "lucide-react";
-import { getCategories, getProductPage } from "@/lib/catalog/repository";
+import { getCategories, getProductPage, getCatalogFacets } from "@/lib/catalog/repository";
 import type { ProductType } from "@/lib/catalog/types";
 import { productTypeLabel } from "@/lib/catalog/types";
 import { cn, formatBRL } from "@/lib/format";
 import { CatalogGrid } from "./catalog-grid";
-import { catalogQuery, pageSize, type CatalogParams } from "@/lib/catalog/pagination";
+import { catalogQuery, pageSize, priceRanges, type CatalogParams } from "@/lib/catalog/pagination";
 import { SortSelect } from "./sort-select";
 
 export type { CatalogParams } from "@/lib/catalog/pagination";
-
-const priceRanges = [5000, 10000, 20000, 50000];
 
 export async function CatalogView({
   params,
@@ -27,11 +25,16 @@ export async function CatalogView({
   const { type, maxPrice, page = 1 } = query;
   const filters = {
     q: query.q, categoria: query.category, tipo: type, ordem: query.sort,
+    atributo: query.attribute?.name, valor: query.attribute?.value,
     ate: maxPrice === undefined ? undefined : String(maxPrice),
   };
-  const [categories, { products, total }] = await Promise.all([
-    getCategories(), getProductPage(query),
+  const [categories, { products, total }, facets] = await Promise.all([
+    getCategories(), getProductPage(query), getCatalogFacets(query),
   ]);
+
+  const counts = new Map(facets.map((facet) => [`${facet.kind}:${facet.facet}`, facet.total]));
+  const count = (kind: string, facet: string) => counts.get(`${kind}:${facet}`) ?? 0;
+  const attributes = facets.filter((facet) => facet.kind === "attribute");
 
   const href = (patch: Partial<CatalogParams>) => {
     const merged = { ...filters, ...patch };
@@ -77,7 +80,7 @@ export async function CatalogView({
                 </Link>
                 {categories.map((c) => (
                   <Link key={c.slug} href={href({ categoria: c.slug })} className={cn(chip(params.categoria === c.slug), "shrink-0")}>
-                    {c.name}
+                    {c.parentSlug ? "↳ " : ""}{c.name} ({count("category", c.slug)})
                   </Link>
                 ))}
               </div>
@@ -89,7 +92,7 @@ export async function CatalogView({
               <Link href={href({ tipo: undefined })} className={cn(chip(!type), "shrink-0")}>Todos</Link>
               {(Object.keys(productTypeLabel) as ProductType[]).map((t) => (
                 <Link key={t} href={href({ tipo: t })} className={cn(chip(type === t), "shrink-0")}>
-                  {productTypeLabel[t]}
+                  {productTypeLabel[t]} ({count("type", t)})
                 </Link>
               ))}
             </div>
@@ -100,11 +103,24 @@ export async function CatalogView({
               <Link href={href({ ate: undefined })} className={cn(chip(!maxPrice), "shrink-0")}>Qualquer valor</Link>
               {priceRanges.map((p) => (
                 <Link key={p} href={href({ ate: String(p) })} className={cn(chip(maxPrice === p), "shrink-0")}>
-                  Até {formatBRL(p)}
+                  Até {formatBRL(p)} ({count("price", String(p))})
                 </Link>
               ))}
             </div>
           </div>
+          {(attributes.length > 0 || query.attribute) && (
+            <div>
+              <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-ink-400">Atributos</h2>
+              <Link href={href({ atributo: undefined, valor: undefined })} className={chip(!query.attribute)}>Todos os atributos</Link>
+              {attributes.map((option) => (
+                <Link key={JSON.stringify([option.facet, option.label])}
+                  href={href({ atributo: option.facet, valor: option.label })}
+                  className={chip(query.attribute?.name === option.facet && query.attribute.value === option.label)}>
+                  {option.facet}: {option.label} ({option.total})
+                </Link>
+              ))}
+            </div>
+          )}
         </aside>
 
         <div>

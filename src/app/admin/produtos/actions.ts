@@ -27,7 +27,11 @@ const schema = z.object({
   stock: z.string().optional(),
   deliveryPath: z.string().optional(),
   featured: z.string().optional(),
-  active: z.string().optional(),
+  status: z.enum(["draft", "active", "archived"]),
+  publishAt: z.string().refine((value) => value === "" || (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) && z.iso.datetime({ local: true, precision: -1 }).safeParse(value).success)),
+  sku: z.string().trim().max(80),
+  seoTitle: z.string().trim().max(120),
+  seoDescription: z.string().trim().max(320),
 });
 
 export type SaveState = { error?: string };
@@ -45,7 +49,7 @@ export async function saveProduct(_prev: SaveState, form: FormData): Promise<Sav
   if (!Number.isFinite(priceCents) || priceCents <= 0) return { error: "Preço inválido." };
   const compare = f.compareAt ? toCents(f.compareAt) : null;
 
-  const row = productToRow({
+  const row = { ...productToRow({
     slug: slugify(f.title),
     title: f.title,
     subtitle: f.subtitle,
@@ -70,9 +74,15 @@ export async function saveProduct(_prev: SaveState, form: FormData): Promise<Sav
     ),
     stock: f.type === "fisico" && f.stock ? Math.max(0, Number(f.stock)) : null,
     featured: f.featured === "on",
-    active: f.active === "on",
+    active: f.status === "active",
     deliveryPath: f.deliveryPath || null,
-  });
+  }),
+    status: f.status,
+    publish_at: f.publishAt ? f.publishAt + "Z" : null,
+    sku: f.sku || null,
+    seo_title: f.seoTitle || null,
+    seo_description: f.seoDescription || null,
+  };
 
   if (f.id) {
     // Não sobrescreve métricas (avaliação, vendas) na edição.

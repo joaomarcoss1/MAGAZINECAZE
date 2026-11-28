@@ -1,7 +1,7 @@
 import "server-only";
-import { createPublicClient } from "@/lib/supabase/server";
+import { createClient, createPublicClient } from "@/lib/supabase/server";
 import { categories as seedCategories, products as seedProducts } from "./seed";
-import { pageSize } from "./pagination";
+import { pageSize, priceRanges } from "./pagination";
 import type { Category, Product, ProductQuery } from "./types";
 
 /**
@@ -33,6 +33,11 @@ type ProductRow = {
   active: boolean;
   delivery_path: string | null;
   created_at: string;
+  status?: Product["status"];
+  publish_at?: string | null;
+  sku?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
 };
 
 export function rowToProduct(r: ProductRow): Product {
@@ -60,6 +65,11 @@ export function rowToProduct(r: ProductRow): Product {
     active: r.active,
     deliveryPath: r.delivery_path,
     createdAt: r.created_at,
+    status: r.status,
+    publishAt: r.publish_at,
+    sku: r.sku,
+    seoTitle: r.seo_title,
+    seoDescription: r.seo_description,
   };
 }
 
@@ -94,6 +104,7 @@ function normalize(s: string) {
 }
 
 function applyQuery(list: Product[], q: ProductQuery): Product[] {
+  if (q.attribute) return [];
   let out = list.filter((p) => p.active);
   if (q.category) out = out.filter((p) => p.categorySlug === q.category);
   if (q.type) out = out.filter((p) => p.type === q.type);
@@ -123,6 +134,18 @@ export async function getProductPage(query: ProductQuery = {}) {
   return fetchProducts(query, true);
 }
 
+export async function getAdminProductPage(page: number) {
+  const db = await createClient();
+  if (!db) return getProductPage({ sort: "novidades", page });
+  const from = (page - 1) * pageSize;
+  const result = await db.from("products").select(`${columns},status,publish_at`, { count: "exact" })
+    .order("created_at", { ascending: false }).order("id").range(from, from + pageSize - 1);
+  if (result.error && result.status !== 416) throw new Error("Não foi possível carregar os produtos.");
+  const products = ((result.data ?? []) as Omit<ProductRow, "delivery_path">[])
+    .map((row) => rowToProduct({ ...row, delivery_path: null }));
+  return { products, total: result.count ?? 0 };
+}
+
 export async function getProducts(query: ProductQuery = {}): Promise<Product[]> {
   return (await fetchProducts(query, false)).products;
 }
@@ -137,10 +160,9 @@ async function fetchProducts(query: ProductQuery, count: boolean) {
   }
 
   const options = count ? { count: "exact" as const } : undefined;
-  let request = query.q
-    ? db.rpc("search_catalog", { term: query.q }, options)
+  let request = (query.q || query.category || query.attribute)
+    ? db.rpc("catalog_matches", matchArgs(query), options)
     : db.from("products").select(columns, options).eq("active", true);
-  if (query.category) request = request.eq("category_slug", query.category);
   if (query.type) request = request.eq("type", query.type);
   if (query.maxPrice !== undefined) request = request.lte("price_cents", query.maxPrice);
 
@@ -163,6 +185,32 @@ async function fetchProducts(query: ProductQuery, count: boolean) {
   return { products, total: result.count ?? 0 };
 }
 
+function matchArgs(query: ProductQuery) {
+  return { term: query.q || null, category: query.category || null,
+    attr_name: query.attribute?.name ?? null, attr_value: query.attribute?.value ?? null };
+}
+
+type Facet = { kind: "category" | "type" | "price" | "attribute"; facet: string; label: string; total: number };
+
+export async function getCatalogFacets(query: ProductQuery): Promise<Facet[]> {
+  const db = createPublicClient();
+  if (!db) {
+    const count = (patch: ProductQuery) => applyQuery(seedProducts, { ...query, ...patch }).length;
+    return [
+      ...seedCategories.map((c) => ({ kind: "category" as const, facet: c.slug, label: "", total: count({ category: c.slug }) })),
+      ...Array.from(new Set(seedProducts.map((p) => p.type)), (type) => ({
+        kind: "type" as const, facet: type, label: "", total: count({ type }),
+      })),
+      ...priceRanges.map((maxPrice) => ({ kind: "price" as const, facet: String(maxPrice), label: "", total: count({ maxPrice }) })),
+    ];
+  }
+  const result = await db.rpc("catalog_facets", {
+    ...matchArgs(query), product_type: query.type ?? null, max_price: query.maxPrice ?? null,
+  });
+  if (result.error) throw new Error("Não foi possível carregar os filtros.");
+  return result.data as Facet[];
+}
+
 export async function getSitemapProductSlugs() {
   const db = createPublicClient();
   if (!db) return seedProducts.filter((p) => p.active).map((p) => p.slug);
@@ -180,16 +228,16 @@ export async function getSitemapProductSlugs() {
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const db = createPublicClient();
   if (!db) return seedProducts.find((p) => p.slug === slug && p.active) ?? null;
-  const { data } = await db.from("products").select("*").eq("slug", slug).eq("active", true).maybeSingle();
-  return data ? rowToProduct(data as ProductRow) : null;
+  const { data } = await db.from("products").select(`${columns},seo_title,seo_description`).eq("slug", slug).eq("active", true).maybeSingle();
+  return data ? rowToProduct({ ...data, delivery_path: null } as ProductRow) : null;
 }
 
 export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   if (ids.length === 0) return [];
   const db = createPublicClient();
   if (!db) return seedProducts.filter((p) => ids.includes(p.id) && p.active);
-  const { data } = await db.from("products").select("*").in("id", ids).eq("active", true);
-  return ((data ?? []) as ProductRow[]).map(rowToProduct);
+  const { data } = await db.from("products").select(columns).in("id", ids).eq("active", true);
+  return ((data ?? []) as Omit<ProductRow, "delivery_path">[]).map((row) => rowToProduct({ ...row, delivery_path: null }));
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -198,6 +246,7 @@ export async function getCategories(): Promise<Category[]> {
   const { data } = await db.from("categories").select("*").order("position");
   return (data ?? []).map((c) => ({
     slug: c.slug,
+    parentSlug: c.parent_slug,
     name: c.name,
     description: c.description,
     icon: c.icon,

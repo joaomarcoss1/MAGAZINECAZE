@@ -76,8 +76,20 @@ export function ProductForm({ product, categories, readOnly }: { product: Produc
         <L label="Entrega digital: caminho no Storage (bucket “digital”) ou URL da área do aluno" className="sm:col-span-2">
           <input name="deliveryPath" defaultValue={product?.deliveryPath ?? ""} placeholder="ebooks/renda-extra.pdf  ou  https://alunos.seudominio.com/curso" className={inputClass} />
         </L>
+        <L label="Status">
+          <select name="status" defaultValue={product?.status ?? (product?.active ? "active" : "draft")} className={inputClass}>
+            <option value="draft">Rascunho</option><option value="active">Ativo</option><option value="archived">Arquivado</option>
+          </select>
+        </L>
+        <L label="Publicar a partir de (UTC)">
+          <input name="publishAt" type="datetime-local" defaultValue={product?.publishAt ? new Date(product.publishAt).toISOString().slice(0, 16) : ""} className={inputClass} />
+        </L>
+        <L label="SKU"><input name="sku" maxLength={80} defaultValue={product?.sku ?? ""} className={inputClass} /></L>
+        <L label="Título para buscadores"><input name="seoTitle" maxLength={120} defaultValue={product?.seoTitle ?? ""} className={inputClass} /></L>
+        <L label="Descrição para buscadores" className="sm:col-span-2">
+          <textarea name="seoDescription" maxLength={320} rows={3} defaultValue={product?.seoDescription ?? ""} className={`${inputClass} h-auto py-3`} />
+        </L>
         <div className="flex gap-6 text-sm font-medium sm:col-span-2">
-          <label className="flex items-center gap-2"><input type="checkbox" name="active" defaultChecked={product?.active ?? true} className="size-4 accent-brand-600" /> Ativo na loja</label>
           <label className="flex items-center gap-2"><input type="checkbox" name="featured" defaultChecked={product?.featured} className="size-4 accent-brand-600" /> Destaque na home</label>
         </div>
       </fieldset>

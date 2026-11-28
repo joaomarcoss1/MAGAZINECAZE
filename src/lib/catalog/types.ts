@@ -4,6 +4,7 @@ export type CoverTheme = "atlantico" | "sol" | "caja" | "mandacaru" | "coral" | 
 
 export interface Category {
   slug: string;
+  parentSlug?: string | null;
   name: string;
   description: string;
   icon: string; // nome do ícone lucide (ver components/ui/icon.tsx)
@@ -36,6 +37,11 @@ export interface Product {
   /** Entrega digital: caminho no Storage (ebook/sistema) ou URL da área do aluno (curso). */
   deliveryPath: string | null;
   createdAt: string;
+  status?: "draft" | "active" | "archived";
+  publishAt?: string | null;
+  sku?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
 }
 
 export type SortOption = "relevancia" | "mais-vendidos" | "menor-preco" | "maior-preco" | "avaliacao" | "novidades";
@@ -48,6 +54,7 @@ export interface ProductQuery {
   maxPrice?: number;
   limit?: number;
   page?: number;
+  attribute?: { name: string; value: string };
 }
 
 export const productTypeLabel: Record<ProductType, string> = {
