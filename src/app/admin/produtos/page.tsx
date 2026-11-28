@@ -14,6 +14,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-extrabold">Produtos</h1>
+        <Link href="/admin/produtos/importacoes" className="text-sm font-semibold text-brand-700 underline">Importar e exportar</Link>
         <ButtonLink href="/admin/produtos/novo" variant="buy" size="sm"><Plus className="size-4" /> Novo produto</ButtonLink>
       </div>
       <ul className="divide-y divide-areia-200 overflow-hidden rounded-2xl border border-areia-200 bg-white">
