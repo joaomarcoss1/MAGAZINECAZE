@@ -108,16 +108,16 @@ grant select on public.catalog_readable_products to anon, authenticated, service
 
 drop function public.search_catalog(text);
 create function public.search_catalog(term text)
-returns setof public.catalog_readable_products language sql stable security invoker as $
+returns setof public.catalog_readable_products language sql stable security invoker as $$
   select p.* from public.catalog_readable_products p
   where p.active and p.status = 'active' and (p.publish_at is null or p.publish_at <= now())
     and p.search_document @@ pg_catalog.websearch_to_tsquery('public.catalog_pt'::regconfig, left(term, 120))
-$;
+$$;
 revoke execute on function public.search_catalog(text) from public;
 grant execute on function public.search_catalog(text) to anon, authenticated, service_role;
 
 create function public.catalog_matches(term text, category text, attr_name text, attr_value text)
-returns setof public.catalog_readable_products language sql stable security invoker as $
+returns setof public.catalog_readable_products language sql stable security invoker as $$
   select p.* from public.catalog_readable_products p
   where p.active and p.status = 'active' and (p.publish_at is null or p.publish_at <= now())
     and (term is null or p.search_document @@ pg_catalog.websearch_to_tsquery('public.catalog_pt'::regconfig, left(term, 120)))
