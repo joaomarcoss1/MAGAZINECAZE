@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { getProducts } from "@/lib/catalog/repository";
+import { getProductPage } from "@/lib/catalog/repository";
+import { pageNumber, pageSize } from "@/lib/catalog/pagination";
 import { productTypeLabel } from "@/lib/catalog/types";
 import { formatBRL } from "@/lib/format";
 import { ProductCover } from "@/components/product/product-cover";
 import { ButtonLink } from "@/components/ui/button";
 
-export default async function AdminProducts() {
-  const products = await getProducts({ sort: "novidades" });
+export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ pagina?: string }> }) {
+  const page = pageNumber((await searchParams).pagina);
+  const { products, total } = await getProductPage({ sort: "novidades", page });
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -28,6 +30,11 @@ export default async function AdminProducts() {
           </li>
         ))}
       </ul>
+      <nav aria-label="Paginação de produtos" className="mt-5 flex gap-4 text-sm">
+        {page > 1 && <Link href={`?pagina=${page - 1}`}>Anterior</Link>}
+        <span>Página {page}</span>
+        {page * pageSize < total && <Link href={`?pagina=${page + 1}`}>Próxima</Link>}
+      </nav>
     </div>
   );
 }

@@ -22,6 +22,7 @@ export function SortSelect({ value }: { value: string }) {
         onChange={(e) => {
           const sp = new URLSearchParams(params);
           sp.set("ordem", e.target.value);
+          sp.delete("pagina");
           router.push(`${pathname}?${sp}`);
         }}
         className="h-10 rounded-xl border border-ink-200 bg-white px-3 font-medium text-ink-900 focus:border-brand-500 focus:outline-none"

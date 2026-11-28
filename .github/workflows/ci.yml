@@ -40,6 +40,8 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: supabase start
+      - name: Mede consultas com cinco mil produtos fictícios
+        run: docker exec -i supabase_db_magazine-caze psql -X -U postgres -v ON_ERROR_STOP=1 < scripts/benchmark-catalog.sql
       - name: Exporta as credenciais efêmeras do banco local
         shell: bash
         run: |

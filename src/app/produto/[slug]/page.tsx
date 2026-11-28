@@ -19,7 +19,7 @@ type Props = { params: Promise<{ slug: string }> };
 export const revalidate = 300;
 
 export async function generateStaticParams() {
-  return (await getProducts()).map((p) => ({ slug: p.slug }));
+  return (await getProducts({ sort: "mais-vendidos", limit: 500 })).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

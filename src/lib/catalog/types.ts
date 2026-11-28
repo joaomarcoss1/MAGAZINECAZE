@@ -47,6 +47,7 @@ export interface ProductQuery {
   sort?: SortOption;
   maxPrice?: number;
   limit?: number;
+  page?: number;
 }
 
 export const productTypeLabel: Record<ProductType, string> = {
