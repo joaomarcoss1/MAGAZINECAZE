@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { SearchX } from "lucide-react";
-import { getCategories, getProducts } from "@/lib/catalog/repository";
-import type { ProductType, SortOption } from "@/lib/catalog/types";
+import { getCategories, getProductPage } from "@/lib/catalog/repository";
+import type { ProductType } from "@/lib/catalog/types";
 import { productTypeLabel } from "@/lib/catalog/types";
 import { cn, formatBRL } from "@/lib/format";
-import { ProductGrid } from "./product-card";
+import { CatalogGrid } from "./catalog-grid";
+import { catalogQuery, pageSize, type CatalogParams } from "@/lib/catalog/pagination";
 import { SortSelect } from "./sort-select";
 
-export type CatalogParams = { q?: string; categoria?: string; tipo?: string; ordem?: string; ate?: string };
+export type { CatalogParams } from "@/lib/catalog/pagination";
 
 const priceRanges = [5000, 10000, 20000, 50000];
 
@@ -22,23 +23,20 @@ export async function CatalogView({
   title: string;
   description?: string;
 }) {
-  const type = params.tipo && params.tipo in productTypeLabel ? (params.tipo as ProductType) : undefined;
-  const maxPrice = params.ate ? Number(params.ate) || undefined : undefined;
-  const [categories, products] = await Promise.all([
-    getCategories(),
-    getProducts({
-      q: params.q,
-      category: params.categoria,
-      type,
-      maxPrice,
-      sort: (params.ordem as SortOption) ?? "relevancia",
-    }),
+  const query = catalogQuery(params);
+  const { type, maxPrice, page = 1 } = query;
+  const filters = {
+    q: query.q, categoria: query.category, tipo: type, ordem: query.sort,
+    ate: maxPrice === undefined ? undefined : String(maxPrice),
+  };
+  const [categories, { products, total }] = await Promise.all([
+    getCategories(), getProductPage(query),
   ]);
 
   const href = (patch: Partial<CatalogParams>) => {
-    const merged = { ...params, ...patch };
+    const merged = { ...filters, ...patch };
     const sp = new URLSearchParams();
-    for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
+    for (const [k, v] of Object.entries(merged)) if (typeof v === "string" && v && !(k === "pagina" && v === "1")) sp.set(k, v);
     // A categoria já está no caminho em /categoria/[slug]
     if (basePath.startsWith("/categoria")) sp.delete("categoria");
     const s = sp.toString();
@@ -62,10 +60,10 @@ export async function CatalogView({
           <h1 className="text-3xl font-extrabold text-ink-900">{title}</h1>
           <p className="mt-1 text-sm text-ink-500">
             {description ? `${description} · ` : ""}
-            {products.length} {products.length === 1 ? "produto" : "produtos"}
+            {total} {total === 1 ? "produto" : "produtos"}
           </p>
         </div>
-        <SortSelect value={params.ordem ?? "relevancia"} />
+        <SortSelect value={query.sort ?? "relevancia"} />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
@@ -74,7 +72,7 @@ export async function CatalogView({
             <div>
               <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-ink-400">Categorias</h2>
               <div className="scrollbar-none flex gap-1 overflow-x-auto lg:block lg:space-y-0.5">
-                <Link href={href({ categoria: undefined })} className={cn(chip(!params.categoria), "shrink-0")}>
+                <Link href={href({ categoria: undefined })} className={cn(chip(!query.category), "shrink-0")}>
                   Todas
                 </Link>
                 {categories.map((c) => (
@@ -110,13 +108,13 @@ export async function CatalogView({
         </aside>
 
         <div>
-          {params.q && (
+          {query.q && (
             <p className="mb-4 text-sm text-ink-500">
-              Resultados para <strong className="text-ink-900">“{params.q}”</strong>
+              Resultados para <strong className="text-ink-900">“{query.q}”</strong>
             </p>
           )}
           {products.length ? (
-            <ProductGrid products={products} />
+            <CatalogGrid key={href({ pagina: String(page) })} page={page} total={total} filters={filters} initial={products} />
           ) : (
             <div className="flex flex-col items-center rounded-2xl border border-dashed border-areia-300 bg-white py-16 text-center">
               <SearchX className="size-12 text-ink-200" />
@@ -126,6 +124,13 @@ export async function CatalogView({
                 Limpar filtros
               </Link>
             </div>
+          )}
+          {(page > 1 || page * pageSize < total) && (
+            <nav aria-label="Paginação do catálogo" className="mt-6 flex items-center justify-center gap-5 text-sm">
+              {page > 1 && <Link href={href({ pagina: String(page - 1) })}>Anterior</Link>}
+              <span>Página {page}</span>
+              {page * pageSize < total && <Link className="hidden sm:inline" href={href({ pagina: String(page + 1) })}>Próxima</Link>}
+            </nav>
           )}
         </div>
       </div>

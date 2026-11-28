@@ -95,3 +95,5 @@ O diagnóstico inicial e os pontos de revisão de cada entrega estão em [`docs/
 > ⚠️ Produtos, avaliações e depoimentos atuais são **exemplos**. Substitua tudo pelos dados reais antes de publicar, e revise os textos legais com um(a) advogado(a).
 
 A entrega digital exige sessão do comprador. Veja [entrega digital e configuração](docs/ENTREGA-DIGITAL.md).
+
+A listagem paginada, a busca e o benchmark estão documentados em [Catálogo](docs/CATALOGO.md).

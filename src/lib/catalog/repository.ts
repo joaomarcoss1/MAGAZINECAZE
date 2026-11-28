@@ -1,6 +1,7 @@
 import "server-only";
 import { createPublicClient } from "@/lib/supabase/server";
 import { categories as seedCategories, products as seedProducts } from "./seed";
+import { pageSize } from "./pagination";
 import type { Category, Product, ProductQuery } from "./types";
 
 /**
@@ -96,7 +97,7 @@ function applyQuery(list: Product[], q: ProductQuery): Product[] {
   let out = list.filter((p) => p.active);
   if (q.category) out = out.filter((p) => p.categorySlug === q.category);
   if (q.type) out = out.filter((p) => p.type === q.type);
-  if (q.maxPrice) out = out.filter((p) => p.priceCents <= q.maxPrice!);
+  if (q.maxPrice !== undefined) out = out.filter((p) => p.priceCents <= q.maxPrice!);
   if (q.q) {
     const terms = normalize(q.q).split(/\s+/).filter(Boolean);
     out = out.filter((p) => {
@@ -107,28 +108,73 @@ function applyQuery(list: Product[], q: ProductQuery): Product[] {
   const sorters: Record<string, (a: Product, b: Product) => number> = {
     "mais-vendidos": (a, b) => b.soldCount - a.soldCount,
     "menor-preco": (a, b) => a.priceCents - b.priceCents,
-    "maior-preco": (a, b) => b.priceCents - a.priceCents,
+    "maior-preco": (a, b) => b.priceCents - a.priceCents || b.id.localeCompare(a.id),
     avaliacao: (a, b) => b.rating - a.rating || b.reviewsCount - a.reviewsCount,
     novidades: (a, b) => b.createdAt.localeCompare(a.createdAt),
     relevancia: (a, b) => Number(b.featured) - Number(a.featured) || b.soldCount - a.soldCount,
   };
-  out = [...out].sort(sorters[q.sort ?? "relevancia"] ?? sorters.relevancia);
-  return q.limit ? out.slice(0, q.limit) : out;
+  const sort = sorters[q.sort ?? "relevancia"] ?? sorters.relevancia;
+  return out.sort((a, b) => sort(a, b) || a.id.localeCompare(b.id));
 }
 
-async function loadAllProducts(): Promise<Product[]> {
-  const db = createPublicClient();
-  if (!db) return seedProducts;
-  const { data, error } = await db.from("products").select("*").eq("active", true);
-  if (error) {
-    console.error("[catalog] erro ao carregar produtos:", error.message);
-    return [];
-  }
-  return (data as ProductRow[]).map(rowToProduct);
+const columns = "id,slug,title,subtitle,description,type,category_slug,price_cents,compare_at_cents,rating,reviews_count,sold_count,badge,cover_theme,cover_icon,image_url,highlights,specs,stock,featured,active,created_at";
+
+export async function getProductPage(query: ProductQuery = {}) {
+  return fetchProducts(query, true);
 }
 
 export async function getProducts(query: ProductQuery = {}): Promise<Product[]> {
-  return applyQuery(await loadAllProducts(), query);
+  return (await fetchProducts(query, false)).products;
+}
+
+async function fetchProducts(query: ProductQuery, count: boolean) {
+  const limit = Math.min(500, Math.max(1, query.limit ?? pageSize));
+  const from = ((query.page ?? 1) - 1) * limit;
+  const db = createPublicClient();
+  if (!db) {
+    const all = applyQuery(seedProducts, query);
+    return { products: all.slice(from, from + limit), total: all.length };
+  }
+
+  const options = count ? { count: "exact" as const } : undefined;
+  let request = query.q
+    ? db.rpc("search_catalog", { term: query.q }, options)
+    : db.from("products").select(columns, options).eq("active", true);
+  if (query.category) request = request.eq("category_slug", query.category);
+  if (query.type) request = request.eq("type", query.type);
+  if (query.maxPrice !== undefined) request = request.lte("price_cents", query.maxPrice);
+
+  switch (query.sort) {
+    case "mais-vendidos": request = request.order("sold_count", { ascending: false }); break;
+    case "menor-preco": request = request.order("price_cents"); break;
+    case "maior-preco": request = request.order("price_cents", { ascending: false }).order("id", { ascending: false }); break;
+    case "avaliacao": request = request.order("rating", { ascending: false }).order("reviews_count", { ascending: false }); break;
+    case "novidades": request = request.order("created_at", { ascending: false }); break;
+    default: request = request.order("featured", { ascending: false }).order("sold_count", { ascending: false });
+  }
+  if (query.sort !== "maior-preco") request = request.order("id");
+  const result = await request.select(columns).range(from, from + limit - 1);
+  if (result.error && result.status !== 416) {
+    console.error("[catalog]", result.error.code);
+    throw new Error("Não foi possível carregar o catálogo.");
+  }
+  const products = ((result.data ?? []) as Omit<ProductRow, "delivery_path">[])
+    .map((row) => rowToProduct({ ...row, delivery_path: null }));
+  return { products, total: result.count ?? 0 };
+}
+
+export async function getSitemapProductSlugs() {
+  const db = createPublicClient();
+  if (!db) return seedProducts.filter((p) => p.active).map((p) => p.slug);
+  const slugs: string[] = [];
+  for (let from = 0; from < 5000; from += 500) {
+    const result = await db.from("products").select("slug").eq("active", true).order("slug").range(from, from + 499);
+    if (result.status === 416) break;
+    if (result.error) throw new Error("Não foi possível carregar o sitemap.");
+    slugs.push(...result.data.map((row) => row.slug));
+    if (result.data.length < 500) break;
+  }
+  return slugs;
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
@@ -164,10 +210,10 @@ export async function getCategory(slug: string): Promise<Category | null> {
 }
 
 export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
-  const all = await getProducts({ category: product.categorySlug, sort: "mais-vendidos" });
+  const all = await getProducts({ category: product.categorySlug, sort: "mais-vendidos", limit: limit + 1 });
   const related = all.filter((p) => p.id !== product.id);
   if (related.length >= limit) return related.slice(0, limit);
-  const extra = (await getProducts({ sort: "mais-vendidos" })).filter(
+  const extra = (await getProducts({ sort: "mais-vendidos", limit: limit * 2 + 1 })).filter(
     (p) => p.id !== product.id && !related.some((r) => r.id === p.id),
   );
   return [...related, ...extra].slice(0, limit);
