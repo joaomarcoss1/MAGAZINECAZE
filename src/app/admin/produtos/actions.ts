@@ -1,5 +1,5 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { invalidateProduct } from "@/lib/catalog/invalidate";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
@@ -86,16 +86,23 @@ export async function saveProduct(_prev: SaveState, form: FormData): Promise<Sav
     seo_description: f.seoDescription || null,
   };
 
+  let id: string;
+  let previousSlug = row.slug;
   if (f.id) {
+    const before = await db.from("products").select("slug").eq("id", f.id).maybeSingle();
+    if (before.error || !before.data) return { error: "Não foi possível localizar o produto." };
+    previousSlug = before.data.slug;
     // Não sobrescreve métricas (avaliação, vendas) na edição.
     const { rating: _r, reviews_count: _rc, sold_count: _s, ...updatable } = row;
     void _r; void _rc; void _s;
     const { error } = await db.from("products").update(updatable).eq("id", f.id);
     if (error) return { error: error.message };
+    id = f.id;
   } else {
-    const { error } = await db.from("products").insert(row);
+    const { data, error } = await db.from("products").insert(row).select("id").single();
     if (error) return { error: error.code === "23505" ? "Já existe um produto com esse nome." : error.message };
+    id = data.id;
   }
-  revalidatePath("/", "layout");
+  invalidateProduct(id, previousSlug, row.slug);
   redirect("/admin/produtos");
 }

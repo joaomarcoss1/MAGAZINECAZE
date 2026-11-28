@@ -21,6 +21,9 @@ test("admin envia imagens e cliente navega pela galeria ordenada", async ({ page
     expect((await db.from("profiles").update({ role: "admin" }).eq("id", adminId)).error).toBeNull();
     const login = await page.request.post("/api/auth/session", { data: { mode: "entrar", email, password } });
     expect(login.status()).toBe(200);
+    await page.goto("/produto/fixture-galeria");
+    await expect(page.getByRole("heading", { name: "Produto da galeria", exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Galeria do produto" })).toHaveCount(0);
     await page.goto(`/admin/produtos/${productId}`);
     await page.getByLabel("Arquivo de imagem").setInputFiles({
       name: "invalida.png", mimeType: "image/png", buffer: Buffer.from("sem imagem"),

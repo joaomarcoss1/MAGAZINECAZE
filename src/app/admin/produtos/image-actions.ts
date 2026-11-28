@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { invalidateProduct } from "@/lib/catalog/invalidate";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { catalogImageSource } from "@/lib/catalog/image-origins";
@@ -42,6 +42,6 @@ export async function uploadProductImage(productId: string, _state: { error?: st
     return { error: saved.data === "limit" ? "O produto já tem 12 imagens." : "Não foi possível registrar a imagem." };
   }
 
-  revalidatePath("/", "layout");
+  invalidateProduct(productId, product.slug);
   return { uploaded: true };
 }

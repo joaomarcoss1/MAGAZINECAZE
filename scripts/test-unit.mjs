@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { build } from "esbuild";
 
 const directory = mkdtempSync(join(tmpdir(), "magazine-caze-tests-"));
-const bundledTests = ["business", "security"].map((name) => join(directory, name + ".test.js"));
+const bundledTests = ["business", "security", "sitemap"].map((name) => join(directory, name + ".test.js"));
 try {
   await build({
-    entryPoints: ["tests/business.test.ts", "tests/security.test.ts"],
+    entryPoints: ["tests/business.test.ts", "tests/security.test.ts", "tests/sitemap.test.ts"],
     outdir: directory,
     bundle: true,
     platform: "node",

@@ -1,4 +1,8 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
+import { isDemoMode } from "@/lib/config";
+import { catalogLifetime, catalogTag, productSlugTag, productTag } from "./cache-tags";
+import { sitemapBlockSize, sitemapIds } from "./sitemap-blocks";
 import { createClient, createPublicClient } from "@/lib/supabase/server";
 import { categories as seedCategories, products as seedProducts } from "./seed";
 import { pageSize, priceRanges } from "./pagination";
@@ -131,7 +135,8 @@ function applyQuery(list: Product[], q: ProductQuery): Product[] {
 const columns = "id,slug,title,subtitle,description,type,category_slug,price_cents,compare_at_cents,rating,reviews_count,sold_count,badge,cover_theme,cover_icon,image_url,highlights,specs,stock,featured,active,created_at";
 
 export async function getProductPage(query: ProductQuery = {}) {
-  return fetchProducts(query, true);
+  const standard = !query.q && !query.category && !query.attribute && query.maxPrice === undefined && !query.type && (query.page ?? 1) <= 250;
+  return !isDemoMode && standard ? cachedProductPage(query, true) : fetchProducts(query, true);
 }
 
 export async function getAdminProductPage(page: number) {
@@ -147,8 +152,12 @@ export async function getAdminProductPage(page: number) {
 }
 
 export async function getProducts(query: ProductQuery = {}): Promise<Product[]> {
-  return (await fetchProducts(query, false)).products;
+  return (await (isDemoMode ? fetchProducts(query, false) : cachedProductPage(query, false))).products;
 }
+
+const cachedProductPage = unstable_cache(fetchProducts, ["catalog-list"], {
+  tags: [catalogTag], revalidate: catalogLifetime,
+});
 
 async function fetchProducts(query: ProductQuery, count: boolean) {
   const limit = Math.min(500, Math.max(1, query.limit ?? pageSize));
@@ -193,6 +202,15 @@ function matchArgs(query: ProductQuery) {
 type Facet = { kind: "category" | "type" | "price" | "attribute"; facet: string; label: string; total: number };
 
 export async function getCatalogFacets(query: ProductQuery): Promise<Facet[]> {
+  const standard = !query.q && !query.category && !query.attribute && query.maxPrice === undefined && !query.type;
+  return !isDemoMode && standard ? cachedFacets() : fetchCatalogFacets(query);
+}
+
+const cachedFacets = unstable_cache(() => fetchCatalogFacets({}), ["catalog-facets"], {
+  tags: [catalogTag], revalidate: catalogLifetime,
+});
+
+async function fetchCatalogFacets(query: ProductQuery): Promise<Facet[]> {
   const db = createPublicClient();
   if (!db) {
     const count = (patch: ProductQuery) => applyQuery(seedProducts, { ...query, ...patch }).length;
@@ -211,24 +229,49 @@ export async function getCatalogFacets(query: ProductQuery): Promise<Facet[]> {
   return result.data as Facet[];
 }
 
-export async function getSitemapProductSlugs() {
+export const getCatalogSitemapIds = unstable_cache(async () => {
   const db = createPublicClient();
-  if (!db) return seedProducts.filter((p) => p.active).map((p) => p.slug);
+  if (!db) return sitemapIds(seedProducts.filter((p) => p.active).length, seedCategories.length);
+  const [products, categories] = await Promise.all([
+    db.from("products").select("id", { count: "exact", head: true }).eq("active", true),
+    db.from("categories").select("slug", { count: "exact", head: true }),
+  ]);
+  if (products.error || categories.error) throw new Error("Não foi possível contar as URLs.");
+  return sitemapIds(products.count ?? 0, categories.count ?? 0);
+}, ["catalog-sitemap-index"], { tags: [catalogTag], revalidate: catalogLifetime });
+
+export const getCatalogSitemapSlugs = unstable_cache(async (table: "products" | "categories", offset: number) => {
+  const db = createPublicClient();
+  if (!db) {
+    const rows = table === "products" ? seedProducts.filter((p) => p.active) : seedCategories;
+    return rows.map((p) => p.slug).sort().slice(offset, offset + sitemapBlockSize);
+  }
   const slugs: string[] = [];
-  for (let from = 0; from < 5000; from += 500) {
-    const result = await db.from("products").select("slug").eq("active", true).order("slug").range(from, from + 499);
+  const pageLength = 500;
+  for (let from = offset; from < offset + sitemapBlockSize; from += pageLength) {
+    let request = db.from(table).select("slug").order("slug").range(from, from + pageLength - 1);
+    if (table === "products") request = request.eq("active", true);
+    const result = await request;
     if (result.status === 416) break;
     if (result.error) throw new Error("Não foi possível carregar o sitemap.");
     slugs.push(...result.data.map((row) => row.slug));
-    if (result.data.length < 500) break;
+    if (result.data.length < pageLength) break;
   }
   return slugs;
-}
+}, ["catalog-sitemap-block"], { tags: [catalogTag], revalidate: catalogLifetime });
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
+  if (isDemoMode) return seedProducts.find((p) => p.slug === slug && p.active) ?? null;
+  return unstable_cache(fetchProductBySlug, ["product-details", slug], {
+    tags: [productSlugTag(slug)], revalidate: catalogLifetime,
+  })(slug);
+}
+
+async function fetchProductBySlug(slug: string): Promise<Product | null> {
   const db = createPublicClient();
-  if (!db) return seedProducts.find((p) => p.slug === slug && p.active) ?? null;
-  const { data } = await db.from("products").select(`${columns},seo_title,seo_description`).eq("slug", slug).eq("active", true).maybeSingle();
+  if (!db) return null;
+  const { data, error } = await db.from("products").select(`${columns},seo_title,seo_description`).eq("slug", slug).eq("active", true).maybeSingle();
+  if (error) throw new Error("Não foi possível carregar o produto.");
   return data ? rowToProduct({ ...data, delivery_path: null } as ProductRow) : null;
 }
 
@@ -241,18 +284,26 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
 }
 
 export async function getProductImages(id: string): Promise<ProductImage[]> {
+  if (isDemoMode) return [];
+  return unstable_cache(fetchProductImages, ["product-images", id], {
+    tags: [productTag(id)], revalidate: catalogLifetime,
+  })(id);
+}
+
+async function fetchProductImages(id: string): Promise<ProductImage[]> {
   const db = createPublicClient();
   if (!db) return [];
   const { data, error } = await db.from("product_images").select("url,alt,position")
     .eq("product_id", id).order("position").limit(12);
-  if (error) console.error("[catalog images]", error.code);
+  if (error) throw new Error("Não foi possível carregar as imagens.");
   return data ?? [];
 }
 
-export async function getCategories(): Promise<Category[]> {
+export const getCategories = unstable_cache(async (): Promise<Category[]> => {
   const db = createPublicClient();
   if (!db) return seedCategories;
-  const { data } = await db.from("categories").select("*").order("position");
+  const { data, error } = await db.from("categories").select("*").order("position");
+  if (error) throw new Error("Não foi possível carregar as categorias.");
   return (data ?? []).map((c) => ({
     slug: c.slug,
     parentSlug: c.parent_slug,
@@ -261,10 +312,15 @@ export async function getCategories(): Promise<Category[]> {
     icon: c.icon,
     theme: c.theme,
   }));
-}
+}, ["catalog-categories"], { tags: [catalogTag], revalidate: catalogLifetime });
 
 export async function getCategory(slug: string): Promise<Category | null> {
-  return (await getCategories()).find((c) => c.slug === slug) ?? null;
+  const db = createPublicClient();
+  if (!db) return seedCategories.find((category) => category.slug === slug) ?? null;
+  const { data, error } = await db.from("categories").select("*").eq("slug", slug).maybeSingle();
+  if (error) throw new Error("Não foi possível carregar a categoria.");
+  return data ? { slug: data.slug, parentSlug: data.parent_slug, name: data.name,
+    description: data.description, icon: data.icon, theme: data.theme } : null;
 }
 
 export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
