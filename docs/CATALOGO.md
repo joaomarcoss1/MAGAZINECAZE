@@ -14,3 +14,10 @@ A migração 0004 adiciona categorias com subcategorias, SKU, status, data de pu
 Uma categoria inclui os produtos das suas descendentes. As contagens de categoria, formato, preço e atributos são calculadas no Postgres. Cada contagem inclui os demais filtros ativos e simula a opção daquela faceta. A vitrine permite filtrar por um atributo por vez. Preços exibidos nos filtros são limites cumulativos.
 
 Aplique 0004 no Supabase antes do deploy. A rota de entrega usa a chave de serviço para ler o destino depois de verificar o comprador. A API pública e a busca exibem somente os campos do catálogo.
+## Imagens do catálogo
+
+Aplique 0005 no Supabase antes de disponibilizar o painel. Abra um produto salvo e use “Enviar imagem”. O upload exige administrador, texto alternativo e JPEG, PNG ou WebP estático de até 2 MB. O servidor limita a resolução de entrada, remove metadados e armazena WebP de até 1.800 px no bucket público produtos. São até 12 imagens por produto, na ordem de envio. Se ainda não houver capa, a primeira imagem se torna a capa.
+
+O Next Image redimensiona as imagens e negocia AVIF ou WebP em ambientes HTTPS. No Supabase local, o navegador usa diretamente o WebP, pois o otimizador bloqueia destinos de rede privada. As imagens do bucket são públicas, inclusive as enviadas para rascunhos. Use apenas conteúdo destinado à vitrine.
+
+O bucket configurado é permitido automaticamente. Para migrar capas externas legadas, defina NEXT_PUBLIC_CATALOG_IMAGE_ORIGINS com as origens HTTPS exatas separadas por vírgula e gere um novo build. URLs fora da lista exibem a capa padrão. Prefira migrar as imagens para o bucket. URLs com parâmetros ou fragmentos não são aceitas.

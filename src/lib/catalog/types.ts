@@ -68,3 +68,5 @@ export const productTypeLabel: Record<ProductType, string> = {
 export function isDigital(p: Pick<Product, "type">): boolean {
   return p.type !== "fisico";
 }
+
+export type ProductImage = { url: string; alt: string; position: number };

@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, createPublicClient } from "@/lib/supabase/server";
 import { categories as seedCategories, products as seedProducts } from "./seed";
 import { pageSize, priceRanges } from "./pagination";
-import type { Category, Product, ProductQuery } from "./types";
+import type { Category, Product, ProductImage, ProductQuery } from "./types";
 
 /**
  * Camada de acesso ao catálogo. Lê do Supabase quando configurado;
@@ -238,6 +238,15 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   if (!db) return seedProducts.filter((p) => ids.includes(p.id) && p.active);
   const { data } = await db.from("products").select(columns).in("id", ids).eq("active", true);
   return ((data ?? []) as Omit<ProductRow, "delivery_path">[]).map((row) => rowToProduct({ ...row, delivery_path: null }));
+}
+
+export async function getProductImages(id: string): Promise<ProductImage[]> {
+  const db = createPublicClient();
+  if (!db) return [];
+  const { data, error } = await db.from("product_images").select("url,alt,position")
+    .eq("product_id", id).order("position").limit(12);
+  if (error) console.error("[catalog images]", error.code);
+  return data ?? [];
 }
 
 export async function getCategories(): Promise<Category[]> {

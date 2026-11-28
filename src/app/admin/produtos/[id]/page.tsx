@@ -3,6 +3,7 @@ import { getCategories, rowToProduct } from "@/lib/catalog/repository";
 import { products as seedProducts } from "@/lib/catalog/seed";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Product } from "@/lib/catalog/types";
+import { ProductImageUpload } from "@/components/admin/product-image-upload";
 import { ProductForm } from "@/components/admin/product-form";
 import { isDemoMode } from "@/lib/config";
 
@@ -22,6 +23,7 @@ export default async function EditProduct({ params }: { params: Promise<{ id: st
     <div>
       <h1 className="mb-6 text-3xl font-extrabold">{product ? "Editar produto" : "Novo produto"}</h1>
       <ProductForm product={product} categories={categories} readOnly={isDemoMode} />
+      {product && !isDemoMode && <ProductImageUpload productId={product.id} />}
     </div>
   );
 }

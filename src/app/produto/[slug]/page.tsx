@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, CheckCircle2, Download, Lock, QrCode, RotateCcw, Truck, Users } from "lucide-react";
-import { getCategory, getProductBySlug, getProducts, getRelatedProducts } from "@/lib/catalog/repository";
+import { getCategory, getProductBySlug, getProductImages, getProducts, getRelatedProducts } from "@/lib/catalog/repository";
 import { isDigital, productTypeLabel } from "@/lib/catalog/types";
 import { store } from "@/lib/config";
 import { formatBRL, pixPrice } from "@/lib/format";
-import { ProductCover } from "@/components/product/product-cover";
+import { ProductGallery } from "@/components/product/product-gallery";
 import { AddToCartButton } from "@/components/product/add-to-cart-button";
 import { ProductRail } from "@/components/product/product-card";
 import { Badge, badgeTone } from "@/components/ui/badge";
@@ -33,9 +33,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const product = await getProductBySlug((await params).slug);
   if (!product) notFound();
-  const [category, related] = await Promise.all([
+  const [category, related, images] = await Promise.all([
     getCategory(product.categorySlug),
     getRelatedProducts(product),
+    getProductImages(product.id),
   ]);
   const digital = isDigital(product);
 
@@ -55,7 +56,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="container-page py-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replaceAll("<", "\\u003c") }} />
       <nav className="mb-6 text-xs text-ink-500" aria-label="Trilha">
         <Link href="/" className="hover:text-brand-700">Início</Link> <span className="mx-1">/</span>
         {category && (
@@ -69,7 +70,7 @@ export default async function ProductPage({ params }: Props) {
 
       <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] xl:grid-cols-[1.2fr_1fr]">
         <div>
-          <ProductCover product={product} size="hero" className="aspect-[4/3] rounded-3xl shadow-[var(--shadow-card)]" />
+          <ProductGallery product={{ title: product.title, type: product.type, coverTheme: product.coverTheme, coverIcon: product.coverIcon, imageUrl: product.imageUrl }} images={images} />
           <div className="mt-4 grid grid-cols-3 gap-3 text-center text-xs">
             {[
               { icon: Lock, t: "Compra 100% segura" },
