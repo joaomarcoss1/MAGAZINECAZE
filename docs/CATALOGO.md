@@ -21,3 +21,12 @@ Aplique 0005 no Supabase antes de disponibilizar o painel. Abra um produto salvo
 O Next Image redimensiona as imagens e negocia AVIF ou WebP em ambientes HTTPS. No Supabase local, o navegador usa diretamente o WebP, pois o otimizador bloqueia destinos de rede privada. As imagens do bucket são públicas, inclusive as enviadas para rascunhos. Use apenas conteúdo destinado à vitrine.
 
 O bucket configurado é permitido automaticamente. Para migrar capas externas legadas, defina NEXT_PUBLIC_CATALOG_IMAGE_ORIGINS com as origens HTTPS exatas separadas por vírgula e gere um novo build. URLs fora da lista exibem a capa padrão. Prefira migrar as imagens para o bucket. URLs com parâmetros ou fragmentos não são aceitas.
+## Importação e exportação por SKU
+
+No painel, abra Produtos → Importar e exportar. Baixe o modelo ou exporte o catálogo em CSV ou XLSX. A importação aceita até 5.000 produtos por arquivo de até 2 MB, com CSV UTF-8 separado por ponto e vírgula ou vírgula. No XLSX, use a primeira aba, sem fórmulas. Formate SKU como texto para preservar zeros à esquerda.
+
+Para SKU novo, informe título, tipo, slug da categoria e preço em centavos. Mantenha o status draft para revisar antes de publicar. Para atualizar preço e estoque, basta enviar SKU e as colunas correspondentes. Células em branco preservam o valor salvo. SKU vazio no catálogo exportado indica que o produto precisa receber um SKU no painel antes que possa ser atualizado em lote. Para imagens por URL, use o bucket público ou uma origem HTTPS autorizada. A URL tem efeito na capa, enquanto o upload pelo painel adiciona uma imagem à galeria.
+
+Revise a prévia antes de confirmar. A confirmação enfileira somente linhas válidas. O relatório CSV informa o resultado de todas as linhas, inclusive erros detectados antes e durante o processamento. Atualize a página para acompanhar o status. Caso uma transação seja interrompida, as linhas daquele trecho voltam a ficar disponíveis para o próximo processamento.
+
+Após aplicar 0006, habilite [Supabase Cron](https://supabase.com/docs/guides/cron/quickstart) e execute scripts/enable-catalog-import-cron.sql no SQL Editor de cada ambiente que processa lotes. O agendamento consome até mil linhas por minuto, um lote por vez. Verifique o histórico de execuções no Supabase. No CI, o teste chama diretamente a função de processamento. Não há variáveis de ambiente novas. A atualização de páginas de produto segue o intervalo de revalidação existente.
