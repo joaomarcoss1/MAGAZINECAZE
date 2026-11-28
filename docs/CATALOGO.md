@@ -30,3 +30,12 @@ Para SKU novo, informe título, tipo, slug da categoria e preço em centavos. Ma
 Revise a prévia antes de confirmar. A confirmação enfileira somente linhas válidas. O relatório CSV informa o resultado de todas as linhas, inclusive erros detectados antes e durante o processamento. Atualize a página para acompanhar o status. Caso uma transação seja interrompida, as linhas daquele trecho voltam a ficar disponíveis para o próximo processamento.
 
 Após aplicar 0006, habilite [Supabase Cron](https://supabase.com/docs/guides/cron/quickstart) e execute scripts/enable-catalog-import-cron.sql no SQL Editor de cada ambiente que processa lotes. O agendamento consome até mil linhas por minuto, um lote por vez. Verifique o histórico de execuções no Supabase. No CI, o teste chama diretamente a função de processamento. Não há variáveis de ambiente novas. A atualização de páginas de produto segue o intervalo de revalidação existente.
+## Cache, pré-geração e sitemap
+
+Os destaques, as recomendações, as categorias e a listagem sem filtros personalizados usam cache de dados. Buscas livres e combinações de filtros consultam o banco diretamente. O checkout sempre consulta o preço e a disponibilidade atuais no Supabase.
+
+O build pré-gera até 500 produtos mais vendidos. As demais páginas são geradas sob demanda. O cache usa um intervalo de revalidação de 300 segundos. Salvar um produto ou enviar uma imagem expira as tags do catálogo, do produto e de seu endereço. Se o endereço mudar, a tag antiga também é expirada. As importações executadas no banco e as alterações externas usam a revalidação periódica.
+
+O endereço /sitemap.xml é o índice divulgado em robots.txt. Ele aponta para arquivos de páginas, produtos e categorias produzidos pelo generateSitemaps. Cada bloco tem até 5.000 URLs, e o banco entrega os slugs em lotes de 500. A contagem e os blocos usam as regras de publicação da vitrine. URLs inseridas fora do painel passam a aparecer após a atualização periódica do índice.
+
+Não há migração ou variável nova nesta etapa. Em staging, confira o carregamento de uma página gerada sob demanda, a atualização do índice após publicação e o desempenho com cinco mil produtos ativos.
